@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { ArrowDown, Bot } from "lucide-react";
 import { Conversation } from "@/types/chat";
 import { MessageBubble } from "./MessageBubble";
+import { ThinkingIndicator } from "./ThinkingIndicator";
 import { ChatInput } from "./ChatInput";
 import { Button } from "@/components/ui/button";
 import { FileAttachment } from "@/types/chat";
@@ -56,15 +57,20 @@ export function ChatArea({ conversation, isStreaming, onSend, onStop, onRegenera
         className="flex-1 overflow-y-auto"
       >
         <div className="mx-auto max-w-3xl py-4">
-          {conversation.messages.map((msg, i) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              isLast={i === conversation.messages.length - 1}
-              isStreaming={isStreaming && i === conversation.messages.length - 1 && msg.role === "assistant"}
-              onRegenerate={onRegenerate}
-            />
-          ))}
+          {conversation.messages.map((msg, i) => {
+            const isLastMsg = i === conversation.messages.length - 1;
+            const isThinking = isStreaming && isLastMsg && msg.role === "assistant" && msg.content === "";
+            if (isThinking) return <ThinkingIndicator key={msg.id} />;
+            return (
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                isLast={isLastMsg}
+                isStreaming={isStreaming && isLastMsg && msg.role === "assistant"}
+                onRegenerate={onRegenerate}
+              />
+            );
+          })}
         </div>
       </div>
 
