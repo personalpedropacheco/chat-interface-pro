@@ -1,4 +1,4 @@
-import { ChatSettings, AI_MODELS } from "@/types/chat";
+import { ChatSettings } from "@/types/chat";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,9 +11,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 interface SettingsPanelProps {
   settings: ChatSettings;
   onChange: (settings: ChatSettings) => void;
+  models: { id: string; name: string }[];
 }
 
-export function SettingsPanel({ settings, onChange }: SettingsPanelProps) {
+export function SettingsPanel({ settings, onChange, models }: SettingsPanelProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -33,7 +34,7 @@ export function SettingsPanel({ settings, onChange }: SettingsPanelProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {AI_MODELS.map((m) => (
+                {models.map((m) => (
                   <SelectItem key={m.id} value={m.id} className="text-xs">
                     {m.name}
                   </SelectItem>

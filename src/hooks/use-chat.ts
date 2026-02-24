@@ -1,25 +1,39 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Conversation, Message, ChatSettings, FileAttachment } from "@/types/chat";
-import { mockConversations } from "@/lib/mock-data";
+
+const SERVER_URL = "http://localhost:3002";
 
 const DEFAULT_SETTINGS: ChatSettings = {
-  model: "gpt-4o",
+  model: "llama2",
   temperature: 0.7,
   systemPrompt: "You are a helpful AI assistant.",
 };
 
-const MOCK_RESPONSES = [
-  "That's a great question! Let me break it down for you.\n\n## Key Points\n\n1. **First**, consider the architecture\n2. **Second**, think about scalability\n3. **Third**, don't forget testing\n\n```typescript\nconst example = () => {\n  console.log('Hello, world!');\n};\n```\n\nLet me know if you need more details!",
-  "Here's what I'd recommend:\n\n- Start with a clear plan\n- Break the problem into smaller pieces\n- Iterate and refine\n\n> \"The best way to predict the future is to invent it.\" — Alan Kay\n\nWould you like me to elaborate on any of these points?",
-  "I can help with that! Here's a comprehensive overview:\n\n| Feature | Pros | Cons |\n|---------|------|------|\n| Option A | Fast, simple | Limited |\n| Option B | Flexible | Complex |\n| Option C | Scalable | Expensive |\n\n### My Recommendation\n\nGo with **Option B** if you need flexibility, or **Option A** for a quick solution.\n\n```bash\nnpm install solution-b\n```",
-];
-
 export function useChat() {
-  const [conversations, setConversations] = useState<Conversation[]>(mockConversations);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>("1");
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [settings, setSettings] = useState<ChatSettings>(DEFAULT_SETTINGS);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
   const streamAbortRef = useRef(false);
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+
+  // Fetch available Ollama models on mount
+  useEffect(() => {
+    fetch(`${SERVER_URL}/api/models`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.models && data.models.length > 0) {
+          const mapped = data.models.map((m: { name: string }) => ({
+            id: m.name,
+            name: m.name,
+          }));
+          setModels(mapped);
+          setSettings((prev) => ({ ...prev, model: mapped[0].id }));
+        }
+      })
+      .catch((err) => console.error("Failed to fetch models:", err));
+  }, []);
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId) || null;
 
@@ -51,6 +65,128 @@ export function useChat() {
     setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
   }, []);
 
+  const streamOllamaResponse = useCallback(
+    async (convId: string, userContent: string, history: Message[]) => {
+      setIsStreaming(true);
+      streamAbortRef.current = false;
+
+      const assistantId = (Date.now() + 1).toString();
+
+      // Add empty assistant message placeholder
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId
+            ? {
+                ...c,
+                messages: [
+                  ...c.messages,
+                  { id: assistantId, role: "assistant" as const, content: "", timestamp: new Date() },
+                ],
+              }
+            : c
+        )
+      );
+
+      try {
+        const response = await fetch(`${SERVER_URL}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: userContent,
+            model: settings.model,
+            temperature: settings.temperature,
+            conversationHistory: history.slice(-10).map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+          }),
+        });
+
+        if (!response.ok || !response.body) {
+          throw new Error("Failed to connect to chat server");
+        }
+
+        const reader = response.body.getReader();
+        readerRef.current = reader;
+        const decoder = new TextDecoder();
+
+        while (true) {
+          if (streamAbortRef.current) {
+            reader.cancel();
+            break;
+          }
+
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.token) {
+                setConversations((prev) =>
+                  prev.map((c) =>
+                    c.id === convId
+                      ? {
+                          ...c,
+                          messages: c.messages.map((m) =>
+                            m.id === assistantId ? { ...m, content: m.content + data.token } : m
+                          ),
+                        }
+                      : c
+                  )
+                );
+              }
+
+              if (data.error) {
+                setConversations((prev) =>
+                  prev.map((c) =>
+                    c.id === convId
+                      ? {
+                          ...c,
+                          messages: c.messages.map((m) =>
+                            m.id === assistantId
+                              ? { ...m, content: `Error: ${data.error}` }
+                              : m
+                          ),
+                        }
+                      : c
+                  )
+                );
+              }
+            } catch {
+              // Skip invalid JSON lines
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Streaming error:", err);
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === convId
+              ? {
+                  ...c,
+                  messages: c.messages.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, content: "Error: Could not reach Ollama server. Is it running?" }
+                      : m
+                  ),
+                }
+              : c
+          )
+        );
+      } finally {
+        readerRef.current = null;
+        setIsStreaming(false);
+      }
+    },
+    [settings.model, settings.temperature]
+  );
+
   const sendMessage = useCallback(
     async (content: string, attachments?: FileAttachment[]) => {
       let convId = activeConversationId;
@@ -66,61 +202,25 @@ export function useChat() {
         attachments,
       };
 
+      let currentHistory: Message[] = [];
       setConversations((prev) =>
         prev.map((c) => {
           if (c.id !== convId) return c;
           const isFirst = c.messages.length === 0;
-          return {
+          const updated = {
             ...c,
             title: isFirst ? content.slice(0, 40) + (content.length > 40 ? "…" : "") : c.title,
             messages: [...c.messages, userMessage],
             updatedAt: new Date(),
           };
+          currentHistory = updated.messages;
+          return updated;
         })
       );
 
-      // Simulate streaming response
-      setIsStreaming(true);
-      streamAbortRef.current = false;
-
-      const fullResponse = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
-      const assistantId = (Date.now() + 1).toString();
-
-      // Add empty assistant message
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === convId
-            ? {
-                ...c,
-                messages: [
-                  ...c.messages,
-                  { id: assistantId, role: "assistant" as const, content: "", timestamp: new Date() },
-                ],
-              }
-            : c
-        )
-      );
-
-      // Stream characters
-      for (let i = 0; i <= fullResponse.length; i++) {
-        if (streamAbortRef.current) break;
-        await new Promise((r) => setTimeout(r, 12));
-        const partial = fullResponse.slice(0, i);
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === convId
-              ? {
-                  ...c,
-                  messages: c.messages.map((m) => (m.id === assistantId ? { ...m, content: partial } : m)),
-                }
-              : c
-          )
-        );
-      }
-
-      setIsStreaming(false);
+      await streamOllamaResponse(convId, content, currentHistory);
     },
-    [activeConversationId, createConversation]
+    [activeConversationId, createConversation, streamOllamaResponse]
   );
 
   const regenerateLastResponse = useCallback(async () => {
@@ -129,57 +229,22 @@ export function useChat() {
     if (!lastUserMsg) return;
 
     // Remove last assistant message
+    const historyWithoutLast = activeConversation.messages.slice(0, -1);
     setConversations((prev) =>
       prev.map((c) =>
-        c.id === activeConversationId
-          ? { ...c, messages: c.messages.slice(0, -1) }
-          : c
+        c.id === activeConversationId ? { ...c, messages: historyWithoutLast } : c
       )
     );
 
-    // Resend
-    const content = lastUserMsg.content;
-    // Directly simulate again
-    setIsStreaming(true);
-    streamAbortRef.current = false;
-
-    const fullResponse = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
-    const assistantId = (Date.now() + 1).toString();
-
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === activeConversationId
-          ? {
-              ...c,
-              messages: [
-                ...c.messages,
-                { id: assistantId, role: "assistant" as const, content: "", timestamp: new Date() },
-              ],
-            }
-          : c
-      )
-    );
-
-    for (let i = 0; i <= fullResponse.length; i++) {
-      if (streamAbortRef.current) break;
-      await new Promise((r) => setTimeout(r, 12));
-      const partial = fullResponse.slice(0, i);
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === activeConversationId
-            ? {
-                ...c,
-                messages: c.messages.map((m) => (m.id === assistantId ? { ...m, content: partial } : m)),
-              }
-            : c
-        )
-      );
-    }
-    setIsStreaming(false);
-  }, [activeConversation, activeConversationId]);
+    await streamOllamaResponse(activeConversationId!, lastUserMsg.content, historyWithoutLast);
+  }, [activeConversation, activeConversationId, streamOllamaResponse]);
 
   const stopStreaming = useCallback(() => {
     streamAbortRef.current = true;
+    if (readerRef.current) {
+      readerRef.current.cancel();
+      readerRef.current = null;
+    }
     setIsStreaming(false);
   }, []);
 
@@ -197,5 +262,6 @@ export function useChat() {
     isStreaming,
     settings,
     setSettings,
+    models,
   };
 }

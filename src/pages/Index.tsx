@@ -6,7 +6,6 @@ import { ThemeToggle } from "@/components/chat/ThemeToggle";
 import { useChat } from "@/hooks/use-chat";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { AI_MODELS } from "@/types/chat";
 import { PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -23,7 +22,7 @@ const Index = () => {
     return <LoginPage onLogin={login} />;
   }
 
-  const currentModelName = AI_MODELS.find((m) => m.id === chat.settings.model)?.name || chat.settings.model;
+  const currentModelName = chat.models.find((m) => m.id === chat.settings.model)?.name || chat.settings.model;
 
   const sidebarContent = (
     <ChatSidebar
@@ -83,7 +82,7 @@ const Index = () => {
             <span className="text-xs font-medium text-muted-foreground">{currentModelName}</span>
           </div>
           <div className="flex items-center gap-1">
-            <SettingsPanel settings={chat.settings} onChange={chat.setSettings} />
+            <SettingsPanel settings={chat.settings} onChange={chat.setSettings} models={chat.models} />
             <ThemeToggle />
           </div>
         </header>
