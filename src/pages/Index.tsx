@@ -4,6 +4,7 @@ import { ChatArea } from "@/components/chat/ChatArea";
 import { SettingsPanel } from "@/components/chat/SettingsPanel";
 import { ThemeToggle } from "@/components/chat/ThemeToggle";
 import { useChat } from "@/hooks/use-chat";
+import { useChatMock } from "@/hooks/use-chat-mock";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PanelLeft } from "lucide-react";
@@ -11,9 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import LoginPage from "./Login";
 
+const IS_MOCK = import.meta.env.VITE_IS_MOCK_SCENARIO === "true";
+
 const Index = () => {
   const { user, login, logout, isAuthenticated } = useAuth();
-  const chat = useChat();
+  const chatLive = useChat();
+  const chatMock = useChatMock();
+  const chat = IS_MOCK ? chatMock : chatLive;
   const isMobile = useIsMobile();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
