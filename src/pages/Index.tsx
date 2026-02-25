@@ -7,7 +7,8 @@ import { useChat } from "@/hooks/use-chat";
 import { useChatMock } from "@/hooks/use-chat-mock";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { PanelLeft } from "lucide-react";
+import { PanelLeft, Workflow } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import LoginPage from "./Login";
@@ -15,6 +16,7 @@ import LoginPage from "./Login";
 const IS_MOCK = import.meta.env.VITE_IS_MOCK_SCENARIO === "true";
 
 const Index = () => {
+  const navigate = useNavigate();
   const { user, login, logout, isAuthenticated } = useAuth();
   const chatLive = useChat();
   const chatMock = useChatMock();
@@ -87,6 +89,9 @@ const Index = () => {
             <span className="text-xs font-medium text-muted-foreground">{currentModelName}</span>
           </div>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/pipeline")} title="Pipeline Builder">
+              <Workflow className="h-4 w-4" />
+            </Button>
             <SettingsPanel settings={chat.settings} onChange={chat.setSettings} models={chat.models} />
             <ThemeToggle />
           </div>
