@@ -14,6 +14,51 @@ const weekAgo = new Date(now.getTime() - 604800000);
 
 export const mockConversations: Conversation[] = [
   {
+    id: "0",
+    title: "Q1 Expense Report",
+    model: "gpt-4o",
+    createdAt: now,
+    updatedAt: now,
+    messages: [
+      {
+        id: "m0a",
+        role: "user",
+        content: "Can you pull together the Q1 expense report for Sarah Johnson?",
+        timestamp: now,
+      },
+      {
+        id: "m0b",
+        role: "assistant",
+        content: `Here's the Q1 expense report for Sarah Johnson:
+
+\`\`\`expense-report
+{
+  "title": "Q1 2026 Business Travel",
+  "employee": "Sarah Johnson",
+  "dateRange": { "from": "Jan 1, 2026", "to": "Mar 31, 2026" },
+  "status": "pending",
+  "currency": "USD",
+  "lineItems": [
+    { "date": "Jan 12", "description": "Flight to NYC (client meeting)", "category": "Travel", "amount": 485.00 },
+    { "date": "Jan 12-14", "description": "Hotel — Marriott Midtown", "category": "Lodging", "amount": 678.50 },
+    { "date": "Jan 13", "description": "Client dinner at Nobu", "category": "Meals", "amount": 234.80 },
+    { "date": "Feb 3", "description": "Uber rides (5 trips)", "category": "Transport", "amount": 97.25 },
+    { "date": "Feb 20", "description": "Conference registration — ReactConf", "category": "Events", "amount": 350.00 },
+    { "date": "Mar 8", "description": "Flight to SF (team offsite)", "category": "Travel", "amount": 312.00 },
+    { "date": "Mar 8-10", "description": "Airbnb — Mission District", "category": "Lodging", "amount": 420.00 },
+    { "date": "Mar 9", "description": "Team lunch", "category": "Meals", "amount": 186.40 }
+  ],
+  "tax": 219.12,
+  "total": 2983.07
+}
+\`\`\`
+
+The report is currently **pending** approval. Total comes to **$2,983.07** including tax. Want me to break it down further by category?`,
+        timestamp: now,
+      },
+    ],
+  },
+  {
     id: "1",
     title: "React performance optimization",
     model: "gpt-4o",
