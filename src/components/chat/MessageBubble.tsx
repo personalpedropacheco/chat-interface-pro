@@ -4,8 +4,9 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Copy, Check, RefreshCw, User, Bot, FileIcon } from "lucide-react";
 import { Message } from "@/types/chat";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { ExpenseReport, parseExpenseReports } from "./ExpenseReport";
 
 interface MessageBubbleProps {
   message: Message;
@@ -17,6 +18,10 @@ interface MessageBubbleProps {
 export function MessageBubble({ message, isLast, isStreaming, onRegenerate }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
   const isUser = message.role === "user";
+  const segments = useMemo(
+    () => (isUser ? [] : parseExpenseReports(message.content)),
+    [message.content, isUser]
+  );
 
   const copyContent = useCallback(() => {
     navigator.clipboard.writeText(message.content);
@@ -58,57 +63,64 @@ export function MessageBubble({ message, isLast, isStreaming, onRegenerate }: Me
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (
             <div className="prose prose-sm dark:prose-invert max-w-none prose-pre:p-0 prose-pre:bg-transparent">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  code({ node, className, children, ...props }) {
-                    const match = /language-(\w+)/.exec(className || "");
-                    const isInline = !match;
-                    return isInline ? (
-                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono" {...props}>
-                        {children}
-                      </code>
-                    ) : (
-                      <div className="relative my-2 rounded-lg overflow-hidden border border-border">
-                        <div className="flex items-center justify-between bg-muted px-3 py-1.5 text-xs text-muted-foreground">
-                          <span>{match[1]}</span>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(String(children));
-                            }}
-                            className="hover:text-foreground transition-colors"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </button>
-                        </div>
-                        <SyntaxHighlighter
-                          style={oneDark}
-                          language={match[1]}
-                          PreTag="div"
-                          customStyle={{ margin: 0, borderRadius: 0, fontSize: "0.8rem" }}
-                        >
-                          {String(children).replace(/\n$/, "")}
-                        </SyntaxHighlighter>
-                      </div>
-                    );
-                  },
-                  table({ children }) {
-                    return (
-                      <div className="my-2 overflow-x-auto rounded-lg border border-border">
-                        <table className="w-full text-xs">{children}</table>
-                      </div>
-                    );
-                  },
-                  th({ children }) {
-                    return <th className="bg-muted px-3 py-2 text-left font-medium">{children}</th>;
-                  },
-                  td({ children }) {
-                    return <td className="border-t border-border px-3 py-2">{children}</td>;
-                  },
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
+              {segments.map((seg, idx) =>
+                seg.type === "expense-report" ? (
+                  <ExpenseReport key={idx} data={seg.data} />
+                ) : (
+                  <ReactMarkdown
+                    key={idx}
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code({ node, className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || "");
+                        const isInline = !match;
+                        return isInline ? (
+                          <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono" {...props}>
+                            {children}
+                          </code>
+                        ) : (
+                          <div className="relative my-2 rounded-lg overflow-hidden border border-border">
+                            <div className="flex items-center justify-between bg-muted px-3 py-1.5 text-xs text-muted-foreground">
+                              <span>{match[1]}</span>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(String(children));
+                                }}
+                                className="hover:text-foreground transition-colors"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                            <SyntaxHighlighter
+                              style={oneDark}
+                              language={match[1]}
+                              PreTag="div"
+                              customStyle={{ margin: 0, borderRadius: 0, fontSize: "0.8rem" }}
+                            >
+                              {String(children).replace(/\n$/, "")}
+                            </SyntaxHighlighter>
+                          </div>
+                        );
+                      },
+                      table({ children }) {
+                        return (
+                          <div className="my-2 overflow-x-auto rounded-lg border border-border">
+                            <table className="w-full text-xs">{children}</table>
+                          </div>
+                        );
+                      },
+                      th({ children }) {
+                        return <th className="bg-muted px-3 py-2 text-left font-medium">{children}</th>;
+                      },
+                      td({ children }) {
+                        return <td className="border-t border-border px-3 py-2">{children}</td>;
+                      },
+                    }}
+                  >
+                    {seg.value}
+                  </ReactMarkdown>
+                )
+              )}
               {isLast && isStreaming && (
                 <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5" />
               )}

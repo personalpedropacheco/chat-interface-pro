@@ -8,10 +8,37 @@ const DEFAULT_SETTINGS: ChatSettings = {
   systemPrompt: "You are a helpful AI assistant.",
 };
 
+const MOCK_EXPENSE_REPORT = `Here's the expense report you requested:
+
+\`\`\`expense-report
+{
+  "title": "Q1 2026 Business Travel",
+  "employee": "Sarah Johnson",
+  "dateRange": { "from": "Jan 1, 2026", "to": "Mar 31, 2026" },
+  "status": "pending",
+  "currency": "USD",
+  "lineItems": [
+    { "date": "Jan 12", "description": "Flight to NYC (client meeting)", "category": "Travel", "amount": 485.00 },
+    { "date": "Jan 12-14", "description": "Hotel — Marriott Midtown", "category": "Lodging", "amount": 678.50 },
+    { "date": "Jan 13", "description": "Client dinner at Nobu", "category": "Meals", "amount": 234.80 },
+    { "date": "Feb 3", "description": "Uber rides (5 trips)", "category": "Transport", "amount": 97.25 },
+    { "date": "Feb 20", "description": "Conference registration — ReactConf", "category": "Events", "amount": 350.00 },
+    { "date": "Mar 8", "description": "Flight to SF (team offsite)", "category": "Travel", "amount": 312.00 },
+    { "date": "Mar 8-10", "description": "Airbnb — Mission District", "category": "Lodging", "amount": 420.00 },
+    { "date": "Mar 9", "description": "Team lunch", "category": "Meals", "amount": 186.40 }
+  ],
+  "tax": 219.12,
+  "total": 2983.07
+}
+\`\`\`
+
+Let me know if you'd like any adjustments!`;
+
 const MOCK_RESPONSES = [
   "That's a great question! Let me break it down for you.\n\n## Key Points\n\n1. **First**, consider the overall architecture\n2. **Second**, think about performance implications\n3. **Third**, always test thoroughly\n\n```typescript\nconst example = () => {\n  return 'Hello, world!';\n};\n```\n\nHope that helps! Let me know if you have more questions.",
   "Here's what I think about that:\n\nThe approach you're describing is solid. I'd recommend:\n\n- Using **memoization** for expensive computations\n- Keeping your components **small and focused**\n- Writing **tests** for critical paths\n\n| Approach | Pros | Cons |\n|----------|------|------|\n| Option A | Simple | Limited |\n| Option B | Flexible | Complex |\n| Option C | Balanced | Moderate |",
   "Absolutely! Here's a quick example:\n\n```python\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n```\n\nThis is the recursive approach. For better performance, consider **dynamic programming** or **memoization**.",
+  MOCK_EXPENSE_REPORT,
 ];
 
 export function useChatMock() {
