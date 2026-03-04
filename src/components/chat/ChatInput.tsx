@@ -73,7 +73,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
 
   return (
     <div
-      className="border-t border-border bg-card p-4"
+      className="rounded-2xl border border-border bg-card p-4 shadow-lg mx-4 mb-4"
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
     >
